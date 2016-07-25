@@ -78,11 +78,26 @@ public class Clusterer<T extends Clusterable> {
         initQuadTree();
     }
 
+    public Clusterer(Context context, GoogleMap googleMap, boolean autoSetup) {
+        this.googleMap = googleMap;
+        this.context = context;
+        if (autoSetup) {
+            this.googleMap.setOnCameraChangeListener(cameraChanged);
+            this.googleMap.setOnMarkerClickListener(markerClicked);
+        }
+        this.markers = new ReversibleHashMap<>();
+        this.clusterMarkers = new HashMap<>();
+        this.refreshHandler = new Handler();
+        this.updatingLock = new ReentrantLock();
+        this.animationInterpolator = new LinearInterpolator();
+        initQuadTree();
+    }
+
     private void initQuadTree() {
         this.pointsTree = new QuadTree<>(WORLD, NODE_CAPACITY);
     }
 
-    GoogleMap.OnCameraChangeListener cameraChanged = new GoogleMap.OnCameraChangeListener() {
+    public GoogleMap.OnCameraChangeListener cameraChanged = new GoogleMap.OnCameraChangeListener() {
 
         @Override
         public void onCameraChange(CameraPosition cameraPosition) {
@@ -117,7 +132,7 @@ public class Clusterer<T extends Clusterable> {
         this.clustererClickListener = clustererClickListener;
     }
 
-    GoogleMap.OnMarkerClickListener markerClicked = new GoogleMap.OnMarkerClickListener() {
+    public GoogleMap.OnMarkerClickListener markerClicked = new GoogleMap.OnMarkerClickListener() {
         @Override
         public boolean onMarkerClick(Marker marker) {
             Cluster<T> cluster = clusterMarkers.get(marker);
@@ -130,7 +145,10 @@ public class Clusterer<T extends Clusterable> {
                 return true;
             }
             if (clustererClickListener != null) {
-                clustererClickListener.markerClicked(getClusterableFromMarker(marker));
+                T clusterable = getClusterableFromMarker(marker);
+                if (clusterable != null) {
+                    clustererClickListener.markerClicked(clusterable);
+                }
             }
             return false;
         }
